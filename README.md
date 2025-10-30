@@ -38,6 +38,7 @@ Proyek ini butuh Python 3.
 ```bash
 git clone [https://github.com/USERNAME/REPO_LO.git](https://github.com/USERNAME/REPO_LO.git)
 cd REPO_LO
+```
 
 ### 2. Install Modul yang Dibutuhin
 `pip install -r requirements.txt`
