@@ -36,8 +36,8 @@ Proyek ini butuh Python 3.
 ### 1. Clone Reponya
 
 ```bash
-git clone [https://github.com/USERNAME/REPO_LO.git](https://github.com/USERNAME/REPO_LO.git)
-cd REPO_LO
+git clone https://github.com/muhammadzili/Termz.git
+cd Termz
 ```
 
 ### 2. Install Modul yang Dibutuhin
