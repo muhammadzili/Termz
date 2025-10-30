@@ -41,14 +41,18 @@ cd REPO_LO
 ```
 
 ### 2. Install Modul yang Dibutuhin
-`pip install -r requirements.txt`
+```
+pip install -r requirements.txt
+```
 
 ### 4. Jalanin!
-`python termz.py`
+```
+python termz.py
+```
 
 ### Daftar Perintah
 #### Nih list perintahnya, lo juga bisa masuk ke termz nya terus ketik help.
-`
+```
 Available commands:
   --- Navigasi & File ---
   ls [path]              - Tampilkan isi direktori
@@ -75,17 +79,12 @@ Available commands:
   
   Anda juga bisa menjalankan paket terinstall langsung
   dengan mengetik: <package_name> [subcommand]
-`
+```
 
-### Lo pengen bikin Package sendiri?
-Lo bisa bikin paket sendiri buat Termz. Gampang banget!
-
-Lo cuma perlu bikin file .json yang isinya info paket dan perintah Python yang mau dijalanin.
-
-Liat aja contohnya di repo paket (misalnya art.json atau cowsay-lite.json).
-
-Upload file .json lo ke server/repo lo sendiri.
-
-Update file index.json di server lo biar ngasih tau Termz soal paket baru lo.
-
-Jalanin trm change repo di Termz buat nunjuk ke repo lo, pkg update, dan pkg install nama_paket_lo!
+## Lo pengen bikin Package sendiri?
+1. Lo bisa bikin paket sendiri buat Termz. Gampang banget!
+2. Lo cuma perlu bikin file .json yang isinya info paket dan perintah Python yang mau dijalanin.
+3. Liat aja contohnya di repo paket (misalnya art.json atau cowsay-lite.json).
+4. Upload file .json lo ke server/repo lo sendiri.
+5. Update file index.json di server lo biar ngasih tau Termz soal paket baru lo.
+6. Jalanin trm change repo di Termz buat nunjuk ke repo lo, pkg update, dan pkg install nama_paket_lo!
