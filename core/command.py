@@ -55,7 +55,7 @@ class CommandHandler:
             else:
                 print(f"❌ Paket '{package_name}' tidak punya subcommand '{sub_command}' atau command default.")
                 return
-            
+
             if command_to_run:
                 display_subcommand = sub_command if sub_command != "__default__" else "default"
                 print(f"🔹 Running '{package_name} {display_subcommand}'...")
@@ -66,8 +66,11 @@ class CommandHandler:
                     exec(command_clean)
                     
                 except SyntaxError as e:
-                    if "EOL while scanning string literal" in str(e):
-                        print("   (Info: Mendeteksi EOL, mencoba escape newline...)")
+                    error_msg = str(e)
+                    # --- INI DIA FIX-NYA ---
+                    # Kita cek dua-duanya, EOL (PC) dan unterminated (Termux)
+                    if "EOL while scanning string literal" in error_msg or "unterminated string literal" in error_msg:
+                        print("   (Info: Mendeteksi string multi-baris, mencoba fallback...)")
                         try:
                             command_escaped = command_clean.replace('\n', '\\n')
                             exec(command_escaped)
