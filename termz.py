@@ -4,75 +4,83 @@ import shutil
 from core.ui import banner, get_prompt
 from core.package import PackageManager
 from core.command import CommandHandler
+from core.language import LanguageManager
 
 SANDBOX_ROOT = os.path.abspath("Termz/home")
 ORIGINAL_CWD = os.getcwd()
 
 def main():
     os.system('clear' if os.name != 'nt' else 'cls')
-    banner()
-
     os.makedirs(SANDBOX_ROOT, exist_ok=True)
-    
     try:
         os.chdir(SANDBOX_ROOT)
     except Exception as e:
         print(f"Error fatal: Gagal masuk ke direktori home {SANDBOX_ROOT}: {e}")
         return
+    lang = LanguageManager()
+    banner(lang)
 
-    pkg = PackageManager()
-    
+   
+    pkg = PackageManager(lang) 
     installed_packages_cache = pkg.load()
-    cmd_handler = CommandHandler(pkg, installed_packages_cache) 
+    cmd_handler = CommandHandler(pkg, installed_packages_cache, lang) 
 
-    print("\033[1;32mWelcome to Termz v1.0! (Beta Testing) Type 'help' for command list.\033[0m")
-    print(f"\033[1;33mRunning on: {SANDBOX_ROOT}\033[0m\n")
-
+    print(f"\033[1;32m{lang.get('welcome_message')}\033[0m")
+    print(f"\033[1;33m{lang.get('running_on')}: {SANDBOX_ROOT}\033[0m")
+    
+    print("\n\033[1;36m" + "┌" + "─" * 50 + "┐")
+    print("│ " + f"{lang.get('announcement_title'):^48}" + " │")
+    print("│ " + f"{lang.get('announcement_body'):^48}" + " │")
+    print("└" + "─" * 50 + "┘" + "\033[0m\n")
 
     while True:
         try:
-            prompt = get_prompt(SANDBOX_ROOT) 
+
+            prompt = get_prompt(SANDBOX_ROOT, lang) 
             cmd = input(prompt).strip()
 
             if not cmd:
                 continue
 
-            if cmd == "help":
-                print("""
-Available commands:
-  --- Navigasi & File ---
-  ls [path]              - Tampilkan isi direktori
-  cd <dir>               - Pindah direktori (mendukung '..' untuk naik)
-  mkdir <dir>            - Buat direktori baru
-  rm <file>              - Hapus file
-  rm -rf <dir/file>      - Hapus folder atau file secara paksa
-  tre <filename>         - Edit file (menggunakan 'nano' host)
-  git clone <url> [dir]  - Clone repository dari GitHub
+            parts = cmd.split()
+            command = parts[0]
+            args_str = cmd.split(" ", 1)[1] if len(parts) > 1 else ""
+
+            if command == "help":
+                print(f"""
+{lang.get('help_title')}
+  {lang.get('help_nav_file')}
+  ls [path]              - {lang.get('help_ls')}
+  cd <dir>               - {lang.get('help_cd')}
+  mkdir <dir>            - {lang.get('help_mkdir')}
+  rm <file>              - {lang.get('help_rm')}
+  rm -rf <dir/file>      - {lang.get('help_rm_rf')}
+  tre <filename>         - {lang.get('help_tre')}
+  git clone <url> [dir]  - {lang.get('help_git_clone')}
   
-  --- Manajemen Paket ---
-  trm change repo        - Ganti URL repository paket (interaktif)
-  pkg install <name>     - Install package from repo
-  pkg remove <name>      - Remove installed package
-  pkg update             - Update package list from repo
-  pkg upgrade            - Upgrade all installed packages
-  trm installed          - Show installed packages
-  trm search <keyword>   - Search package in repo
-  trm run <command>      - Run a command from installed package
+  {lang.get('help_pkg_mgmt')}
+  trm change repo        - {lang.get('help_trm_change_repo')}
+  trm set language     - {lang.get('help_trm_set_lang')}
+  pkg install <name>     - {lang.get('help_pkg_install')}
+  pkg remove <name>      - {lang.get('help_pkg_remove')}
+  pkg update             - {lang.get('help_pkg_update')}
+  pkg upgrade            - {lang.get('help_pkg_upgrade')}
+  trm installed          - {lang.get('help_trm_installed')}
+  trm search <keyword>   - {lang.get('help_trm_search')}
+  trm run <command>      - {lang.get('help_trm_run')}
   
-  --- Lainnya ---
-  clear                  - Clear screen
-  exit                   - Exit Termz
+  {lang.get('help_other')}
+  clear                  - {lang.get('help_clear')}
+  exit                   - {lang.get('help_exit')}
   
-  Anda juga bisa menjalankan paket terinstall langsung
-  dengan mengetik: <package_name> [subcommand]
+  {lang.get('help_footer')}
 """)
-            elif cmd == 'ls' or cmd.startswith("ls "):
-                parts = cmd.split()
-                target_dir = parts[1] if len(parts) > 1 else "."
+            elif command == 'ls':
+                target_dir = args_str if args_str else "."
                 
                 abs_target = os.path.abspath(target_dir)
                 if not abs_target.startswith(SANDBOX_ROOT):
-                    print("❌ Error: Akses ditolak.")
+                    print(lang.get('access_denied'))
                     continue
 
                 try:
@@ -83,102 +91,124 @@ Available commands:
                         else:
                             print(f)
                 except Exception as e:
-                    print(f"❌ Error ls: {e}")
+                    print(f"{lang.get('error_ls')}: {e}")
 
-            elif cmd.startswith("cd "):
-                target_dir = cmd.split(" ", 1)[1]
+            elif command == "cd":
+            
+                if not args_str:
+                    print(f"Usage: cd <dir>") 
+                    continue
+                
+                target_dir = args_str
                 try:
                     prospective_path = os.path.abspath(os.path.join(os.getcwd(), target_dir))
                     
                     if prospective_path.startswith(SANDBOX_ROOT):
                         os.chdir(target_dir)
                     else:
-                        if os.path.abspath(os.getcwd()) == SANDBOX_ROOT and (target_dir == ".." or target_dir == "../"):
-                             print("Berada di root sandbox, tidak bisa naik lagi.")
+                        # Cek jika kita di root dan mencoba naik
+                        current_abs = os.path.abspath(os.getcwd())
+                        if current_abs == SANDBOX_ROOT and target_dir in ("..", "../"):
+                             print(lang.get('cannot_go_up'))
                         else:
-                             print(f"❌ Error: Akses ditolak (di luar sandbox).")
+                             print(lang.get('access_denied'))
 
                 except FileNotFoundError:
-                    print(f"❌ Error: Direktori '{target_dir}' tidak ditemukan.")
+                    print(lang.get('dir_not_found', target_dir=target_dir))
                 except Exception as e:
-                    print(f"❌ Error cd: {e}")
+                    print(f"{lang.get('error_cd')}: {e}")
 
-            elif cmd.startswith("mkdir "):
-                target_dir = cmd.split(" ", 1)[1]
+            elif command == "mkdir":
+                if not args_str:
+                    print(f"Usage: mkdir <dir>")
+                    continue
+                
+                target_dir = args_str
                 abs_target = os.path.abspath(target_dir)
                 if not abs_target.startswith(SANDBOX_ROOT):
-                    print("❌ Error: Akses ditolak.")
+                    print(lang.get('access_denied'))
                     continue
                 try:
                     os.makedirs(target_dir, exist_ok=True)
-                    print(f"✅ Direktori '{target_dir}' dibuat.")
+                    print(lang.get('dir_created', target_dir=target_dir))
                 except Exception as e:
-                    print(f"❌ Error mkdir: {e}")
+                    print(f"{lang.get('error_mkdir')}: {e}")
 
-            elif cmd.startswith("rm -rf ") or cmd.startswith("rm -r "):
-                target = cmd.split(maxsplit=2)[-1]
+            elif command == "rm" and len(parts) > 1 and parts[1] in ("-rf", "-r"):
+                if len(parts) < 3:
+                    print("Usage: rm -rf <dir/file>")
+                    continue
+                
+                target = parts[2]
                 abs_target = os.path.abspath(target)
 
                 if not abs_target.startswith(SANDBOX_ROOT):
-                    print("❌ Error: Akses ditolak.")
+                    print(lang.get('access_denied'))
                     continue
                 
                 if abs_target == SANDBOX_ROOT:
-                    print("❌ Error: Tidak bisa menghapus direktori root home.")
+                    print(lang.get('cannot_delete_root'))
                     continue
                 
                 try:
                     if os.path.isdir(abs_target):
                         shutil.rmtree(abs_target)
-                        print(f"🗑️  Direktori '{target}' dihapus.")
+                        print(lang.get('dir_deleted', target=target))
                     elif os.path.isfile(abs_target):
                         os.remove(abs_target)
-                        print(f"🗑️  File '{target}' dihapus.")
+                        print(lang.get('file_deleted', target=target))
                     else:
-                        print(f"❌ Error: '{target}' tidak ditemukan.")
+                        print(lang.get('not_found', target=target))
                 except Exception as e:
-                    print(f"❌ Error rm -rf: {e}")
+                    print(f"{lang.get('error_rm_rf')}: {e}")
 
-            elif cmd.startswith("rm "):
-                target = cmd.split(" ", 1)[1]
+            elif command == "rm":
+                if not args_str:
+                    print("Usage: rm <file>")
+                    continue
+                
+                target = args_str
                 abs_target = os.path.abspath(target)
 
                 if not abs_target.startswith(SANDBOX_ROOT):
-                    print("❌ Error: Akses ditolak.")
+                    print(lang.get('access_denied'))
                     continue
                 
                 try:
                     if os.path.isfile(abs_target):
                         os.remove(abs_target)
-                        print(f"🗑️  File '{target}' dihapus.")
+                        print(lang.get('file_deleted', target=target))
                     elif os.path.isdir(abs_target):
-                        print(f"❌ Error: '{target}' adalah direktori. Gunakan 'rm -rf' untuk menghapus.")
+                        print(lang.get('is_dir_use_rf', target=target))
                     else:
-                        print(f"❌ Error: File '{target}' tidak ditemukan.")
+                        print(lang.get('file_not_found', target=target))
                 except Exception as e:
-                    print(f"❌ Error rm: {e}")
+                    print(f"{lang.get('error_rm')}: {e}")
 
-            elif cmd.startswith("tre "):
-                filename = cmd.split(" ", 1)[1]
+            elif command == "tre":
+                if not args_str:
+                    print("Usage: tre <filename>")
+                    continue
+                
+                filename = args_str
                 abs_target = os.path.abspath(filename)
                 if not abs_target.startswith(SANDBOX_ROOT):
-                    print("❌ Error: Akses ditolak.")
+                    print(lang.get('access_denied'))
                     continue
                 
                 try:
-                    print(f"Membuka {filename} dengan nano...")
+                    print(lang.get('nano_opening', filename=filename))
                     subprocess.run(["nano", filename], check=True)
-                    print(f"Nano ditutup.")
+                    print(lang.get('nano_closed'))
                 except FileNotFoundError:
-                    print("❌ Error: 'nano' tidak terinstall di sistem host.")
-                    print("   'tre' memerlukan 'nano' untuk berfungsi.")
+                    print(lang.get('nano_not_found'))
+                    print(f"   {lang.get('nano_required')}")
                 except Exception as e:
-                    print(f"❌ Error menjalankan nano: {e}")
+                    print(f"{lang.get('nano_error')}: {e}")
 
-            elif cmd.startswith("git clone "):
-                parts = cmd.split()
+            elif command == "git" and len(parts) > 1 and parts[1] == "clone":
                 if len(parts) < 3:
-                    print("Usage: git clone <repo_url> [optional_dir]")
+                    print(lang.get('usage_git_clone'))
                     continue
                 
                 repo_url = parts[2]
@@ -186,29 +216,29 @@ Available commands:
 
                 abs_target = os.path.abspath(target_dir)
                 if not abs_target.startswith(SANDBOX_ROOT):
-                    print("❌ Error: Akses ditolak.")
+                    print(lang.get('access_denied'))
                     continue
                 
                 try:
-                    print(f"Cloning '{repo_url}' ke '{target_dir}'...")
+                    print(lang.get('cloning', repo_url=repo_url, target_dir=target_dir))
                     subprocess.run(["git", "clone", repo_url, target_dir], check=True)
-                    print(f"✅ Selesai clone.")
+                    print(lang.get('clone_success'))
                 except FileNotFoundError:
-                     print(f"❌ Error: 'git' tidak terinstall di sistem host.")
+                     print(lang.get('git_not_found'))
                 except Exception as e:
-                    print(f"❌ Error git clone: {e}")
+                    print(f"{lang.get('error_git_clone')}: {e}")
             
             elif cmd == "trm change repo":
-                print("\n--- Ganti Repository ---")
-                print("Repo saat ini:", pkg.api_url)
-                print("\nPilih repo baru:")
-                print("  1. Repo Default (GitHub)")
-                print("  2. Repo Mirror (tinkrow.space)")
-                print("  3. Kustom (Masukkan URL)")
-                print("\n  0. Batal")
+                print(f"\n{lang.get('repo_change_title')}")
+                print(f"{lang.get('current_repo')}:", pkg.api_url)
+                print(f"\n{lang.get('repo_select_new')}")
+                print(f"  1. {lang.get('repo_default')}")
+                print(f"  2. {lang.get('repo_mirror')}")
+                print(f"  3. {lang.get('repo_custom')}")
+                print(f"\n  0. {lang.get('repo_cancel')}")
                 
                 try:
-                    choice = input("Pilihan [0-3]: ").strip()
+                    choice = input(lang.get('repo_choice')).strip()
                 except EOFError:
                     choice = "0"
                 
@@ -218,28 +248,65 @@ Available commands:
                     pkg.set_repo("https://termz.tinkrow.space/packages/")
                 elif choice == "3":
                     try:
-                        custom_url = input("Masukkan URL repo kustom: ").strip()
+                        custom_url = input(lang.get('repo_custom_url')).strip()
                         if custom_url:
                             pkg.set_repo(custom_url)
                         else:
-                            print("URL kosong, dibatalkan.")
+                            print(lang.get('repo_url_empty'))
                     except EOFError:
-                        print("\nDibatalkan.")
+                        print(f"\n{lang.get('repo_cancelled')}")
                 else:
-                    print("Ganti repo dibatalkan.")
+                    print(lang.get('repo_cancelled'))
+                print("")
+        
+            elif cmd == "trm set language":
+                print(f"\n{lang.get('lang_change_title')}")
+                print(f"{lang.get('lang_select_new')}")
+                
+                available = lang.get_available_languages()
+                options = {} # { '1': 'id', '2': 'en' }
+                
+                i = 1
+                for code, name in available.items():
+                    print(f"  {i}. {name} ({code})")
+                    options[str(i)] = code
+                    i += 1
+                
+                print(f"\n  0. {lang.get('repo_cancel')}")
+                
+                try:
+                    choice = input(lang.get('lang_choice', count=len(options))).strip()
+                except EOFError:
+                    choice = "0"
+
+                if choice in options:
+                    lang_code = options[choice]
+                    success, lang_name = lang.set_language(lang_code)
+                    if success:
+                        print(lang.get('lang_set_success', lang_name=lang_name))
+                    else:
+                        print(lang.get('lang_set_fail', lang_code=lang_code))
+                else:
+                    print(lang.get('lang_cancelled'))
                 print("")
             
             elif cmd.startswith("trm repo"):
-                print("Perintah 'trm repo <url>' sudah diganti.")
-                print("Gunakan 'trm change repo' untuk menu interaktif.")
+                print(lang.get('repo_cmd_deprecated'))
+                print(lang.get('repo_cmd_use_interactive'))
 
-            elif cmd.startswith("pkg install"):
-                name = cmd.split(" ")[-1]
+            elif command == "pkg" and len(parts) > 1 and parts[1] == "install":
+                if len(parts) < 3:
+                    print(lang.get('usage_pkg_install'))
+                    continue
+                name = parts[2]
                 installed_packages_cache = pkg.install(name)
                 cmd_handler.update_cache(installed_packages_cache)
                 
-            elif cmd.startswith("pkg remove"):
-                name = cmd.split(" ")[-1]
+            elif command == "pkg" and len(parts) > 1 and parts[1] == "remove":
+                if len(parts) < 3:
+                    print(lang.get('usage_pkg_remove'))
+                    continue
+                name = parts[2]
                 installed_packages_cache = pkg.remove(name)
                 cmd_handler.update_cache(installed_packages_cache)
                 
@@ -249,30 +316,37 @@ Available commands:
                 pkg.upgrade_all()
             elif cmd == "trm installed":
                 pkg.list_installed()
-            elif cmd.startswith("trm search"):
-                keyword = cmd.replace("trm search", "").strip()
+                
+            elif command == "trm" and len(parts) > 1 and parts[1] == "search":
+                keyword = args_str.replace("search", "", 1).strip()
+                if not keyword:
+                    print(lang.get('usage_trm_search'))
+                    continue
                 pkg.search(keyword)
-            elif cmd.startswith("trm run"):
-                command_string = cmd.replace("trm run", "").strip()
+                
+            elif command == "trm" and len(parts) > 1 and parts[1] == "run":
+                command_string = args_str.replace("run", "", 1).strip()
+                if not command_string:
+                    print(lang.get('usage_trm_run'))
+                    continue
                 cmd_handler.run_command(command_string)
-            elif cmd == "clear":
+                
+            elif command == "clear":
                 os.system('clear' if os.name != 'nt' else 'cls')
-            elif cmd == "exit":
-                print("\033[1;33mGoodbye 👋\033[0m")
+            elif command == "exit":
+                print(f"\033[1;33m{lang.get('goodbye')}\033[0m")
                 os.chdir(ORIGINAL_CWD)
                 break
             else:
-                command_base = cmd.split(" ")[0]
-                
-                if command_base in installed_packages_cache:
+                if command in installed_packages_cache:
                     cmd_handler.run_command(cmd)
                 else:
-                    print("Unknown command. Type 'help' for help.")
+                    print(lang.get('unknown_command'))
 
         except KeyboardInterrupt:
-            print("\nInterrupted. Type 'exit' to quit.")
+            print(f"\n{lang.get('interrupted')}")
         except Exception as e:
-            print("Error:", e)
+            print(f"{lang.get('generic_error')}:", e)
 
 
 if __name__ == "__main__":

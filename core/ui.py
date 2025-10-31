@@ -3,7 +3,7 @@ import time
 import datetime
 import os
 
-def banner():
+def banner(lang):
     print("\033[1;35m")
     print("████████╗███████╗██████╗ ███╗   ███╗███████╗")
     print("╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██╔════╝")
@@ -11,7 +11,7 @@ def banner():
     print("   ██║   ██╔══╝  ██╔═══╝ ██║╚██╔╝██║██╔══╝  ")
     print("   ██║   ███████╗██║     ██║ ╚═╝ ██║███████╗")
     print("   ╚═╝   ╚══════╝╚═╝     ╚═╝     ╚═╝╚══════╝")
-    print("          🚀 Termz Shell by Muhammad Zili")
+    print(lang.get("banner_subtitle"))
     print("\033[0m")
 
 def loading_animation(text, duration):
@@ -35,7 +35,7 @@ def progress_bar(text, duration=1):
         time.sleep(duration / total_steps)
     print("\n") 
 
-def get_prompt(sandbox_root): 
+def get_prompt(sandbox_root, lang): 
     time_str = datetime.datetime.now().strftime("%H:%M:%S")
     
     full_path = os.path.abspath(os.getcwd())
@@ -49,5 +49,5 @@ def get_prompt(sandbox_root):
         display_path = "~" + display_path.replace("\\", "/") 
     else:
         display_path = os.path.basename(full_path) 
-
-    return f"\033[1;34m┌─[\033[1;32m{display_path}\033[1;34m]──[\033[1;36m{time_str}\033[1;34m]\n└──╼ \033[1;35mTermz > \033[0m"
+    prompt_prefix = lang.get('prompt_prefix')
+    return f"\033[1;34m┌─[\033[1;32m{display_path}\033[1;34m]──[\033[1;36m{time_str}\033[1;34m]\n└──╼ \033[1;35m{prompt_prefix} > \033[0m"

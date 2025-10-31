@@ -1,9 +1,10 @@
 import subprocess
 
 class CommandHandler:
-    def __init__(self, package_manager, initial_cache):
+    def __init__(self, package_manager, initial_cache, lang): # <-- TERIMA 'lang' OBJECT
         self.package_manager = package_manager
         self.installed_cache = initial_cache
+        self.lang = lang
 
     def update_cache(self, new_cache):
         """Fungsi untuk update cache internal dari termz.py"""
@@ -11,7 +12,7 @@ class CommandHandler:
 
     def run_command(self, command_string):
         if not command_string:
-            print("Usage: trm run <command> [subcommand]")
+            print(self.lang.get('cmd_usage'))
             return
 
         parts = command_string.split()
@@ -21,7 +22,7 @@ class CommandHandler:
         installed = self.installed_cache 
 
         if installed is None:
-            print("⚠️ Cache internal kosong, memuat ulang dari disk...")
+            print(self.lang.get('cmd_cache_empty'))
             installed = self.package_manager.load()
             self.installed_cache = installed
 
@@ -38,49 +39,47 @@ class CommandHandler:
                 if "__default__" in commands_dict:
                     command_to_run = commands_dict["__default__"]
                 elif "default" in commands_dict:
-                    print("   (Info: Menggunakan key 'default' format lama.)")
+                    print(self.lang.get('pkg_command_parse_info_2'))
                     command_to_run = commands_dict["default"]
                 else:
-                    print(f"❌ Paket '{package_name}' tidak punya command default ('__default__' atau 'default').")
+                    print(self.lang.get('cmd_no_default', package_name=package_name))
                     return
             
             elif "__default__" in commands_dict:
-                print(f"Subcommand '{sub_command}' tidak ditemukan. Menjalankan default:")
+                print(self.lang.get('cmd_subcommand_not_found_default', sub_command=sub_command))
                 command_to_run = commands_dict["__default__"]
                 
             elif "default" in commands_dict:
-                print(f"Subcommand '{sub_command}' tidak ditemukan. Menjalankan default (format lama):")
+                print(self.lang.get('cmd_subcommand_not_found_default', sub_command=sub_command))
+                print(self.lang.get('pkg_command_parse_info_2'))
                 command_to_run = commands_dict["default"]
                 
             else:
-                print(f"❌ Paket '{package_name}' tidak punya subcommand '{sub_command}' atau command default.")
+                print(self.lang.get('cmd_subcommand_not_found_no_default', package_name=package_name, sub_command=sub_command))
                 return
 
             if command_to_run:
                 display_subcommand = sub_command if sub_command != "__default__" else "default"
-                print(f"🔹 Running '{package_name} {display_subcommand}'...")
+                print(self.lang.get('cmd_running', package_name=package_name, display_subcommand=display_subcommand))
                 
                 command_clean = command_to_run.replace('\u00A0', ' ')
 
                 try:
-                    exec(command_clean)
+                    exec(command_clean, {"__builtins__": {'print': print, 'len': len, 'str': str, 'int': int, 'float': float, 'list': list, 'dict': dict, 'tuple': tuple, 'range': range, 'True': True, 'False': False, 'None': None}})
                     
                 except SyntaxError as e:
                     error_msg = str(e)
-                    # --- INI DIA FIX-NYA ---
-                    # Kita cek dua-duanya, EOL (PC) dan unterminated (Termux)
                     if "EOL while scanning string literal" in error_msg or "unterminated string literal" in error_msg:
-                        print("   (Info: Mendeteksi string multi-baris, mencoba fallback...)")
+                        print(self.lang.get('cmd_multiline_fallback'))
                         try:
                             command_escaped = command_clean.replace('\n', '\\n')
-                            exec(command_escaped)
+                            exec(command_escaped, {"__builtins__": {'print': print}})
                         except Exception as e_escaped:
-                            print(f"Error executing (escaped fallback): {e_escaped}")
+                            print(self.lang.get('cmd_error_fallback', e=e_escaped))
                     else:
-                        print(f"Error executing command (SyntaxError): {e}")
+                        print(self.lang.get('cmd_error_syntax', e=e))
                 except Exception as e:
-                    print(f"Error executing command: {e}")
+                    print(self.lang.get('cmd_error_generic', e=e))
             return
 
-        print(f"❌ Command '{package_name}' not found in installed packages.")
-
+        print(self.lang.get('cmd_not_found', package_name=package_name))
