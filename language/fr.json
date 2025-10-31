@@ -2,7 +2,7 @@
     "__lang_name__": "Français",
     "banner_subtitle": "         🚀 Shell Termz par Muhammad Zili",
     "prompt_prefix": "Termz",
-    "welcome_message": "Bienvenue sur Termz v1.1 ! Tapez 'help' pour la liste des commandes.",
+    "welcome_message": "Bienvenue sur Termz v2.2 ! Tapez 'help' pour la liste des commandes.",
     "running_on": "Exécuté sur",
     "announcement_title": "ANNONCE DE FONCTIONNALITÉ",
     "announcement_body": "Termz prend désormais en charge plusieurs langues ! Essayez 'trm set language'",

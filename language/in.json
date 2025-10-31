@@ -2,7 +2,7 @@
     "__lang_name__": "Indonesia",
     "banner_subtitle": "         🚀 Termz Shell oleh Muhammad Zili",
     "prompt_prefix": "Termz",
-    "welcome_message": "Selamat Datang di Termz v1.1! Ketik 'help' untuk daftar perintah.",
+    "welcome_message": "Selamat Datang di Termz v2.2! Ketik 'help' untuk daftar perintah.",
     "running_on": "Berjalan di",
     "announcement_title": "PENGUMUMAN FITUR",
     "announcement_body": "Termz sekarang mendukung multi-bahasa! Coba 'trm set language'",
