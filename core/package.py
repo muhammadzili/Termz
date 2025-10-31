@@ -143,18 +143,29 @@ class PackageManager:
                 return False
 
     def _parse_commands_from_data(self, data):
+        def fix_string(cmd_str):
+            # Mengganti literal '\\n' (dari JSON) menjadi newline character '\n'
+            # yang bisa dieksekusi oleh exec()
+            if isinstance(cmd_str, str):
+                return cmd_str.replace('\\n', '\n')
+            return cmd_str
+
         if "command" in data:
-            return {"__default__": data["command"]}
+            return {"__default__": fix_string(data["command"])}
         
         elif "commands" in data and isinstance(data["commands"], dict):
             cmds = data["commands"].copy() 
             
             if "**default**" in cmds:
                 print(self.lang.get('pkg_command_parse_info_1'))
-                cmds["__default__"] = cmds.pop("**default**")
+                cmds["__default__"] = fix_string(cmds.pop("**default**"))
             elif "default" in cmds and "__default__" not in cmds:
                 print(self.lang.get('pkg_command_parse_info_2'))
-                cmds["__default__"] = cmds.pop("default")
+                cmds["__default__"] = fix_string(cmds.pop("default"))
+
+            # Fix juga semua command lainnya, buat jaga-jaga
+            for key in cmds:
+                cmds[key] = fix_string(cmds[key])
                 
             return cmds 
         

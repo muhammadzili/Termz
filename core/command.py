@@ -1,13 +1,12 @@
 import subprocess
 
 class CommandHandler:
-    def __init__(self, package_manager, initial_cache, lang): # <-- TERIMA 'lang' OBJECT
+    def __init__(self, package_manager, initial_cache, lang):
         self.package_manager = package_manager
         self.installed_cache = initial_cache
         self.lang = lang
 
     def update_cache(self, new_cache):
-        """Fungsi untuk update cache internal dari termz.py"""
         self.installed_cache = new_cache
 
     def run_command(self, command_string):
@@ -64,8 +63,52 @@ class CommandHandler:
                 
                 command_clean = command_to_run.replace('\u00A0', ' ')
 
+                safe_builtins = {
+                    'print': print,
+                    'input': input,
+                    'len': len,
+                    'str': str,
+                    'int': int,
+                    'float': float,
+                    'list': list,
+                    'dict': dict,
+                    'tuple': tuple,
+                    'range': range,
+                    'True': True,
+                    'False': False,
+                    'None': None,
+                    'Exception': Exception,
+                    'KeyError': KeyError,
+                    'ValueError': ValueError,
+                    'TypeError': TypeError,
+                    'IndexError': IndexError,
+                    'AttributeError': AttributeError,
+                    'max': max,
+                    'min': min,
+                    'sum': sum,
+                    'abs': abs,
+                    'round': round,
+                    'pow': pow,
+                    'repr': repr,
+                    'bool': bool,
+                    'set': set,
+                    'issubclass': issubclass,
+                    'isinstance': isinstance,
+                    'hasattr': hasattr,
+                    'getattr': getattr,
+                    'setattr': setattr,
+                    'delattr': delattr,
+                    'any': any,
+                    'all': all,
+                    'sorted': sorted,
+                    'zip': zip,
+                    'enumerate': enumerate,
+                    'reversed': reversed,
+                    '__import__': __import__,
+                }
+
                 try:
-                    exec(command_clean, {"__builtins__": {'print': print, 'len': len, 'str': str, 'int': int, 'float': float, 'list': list, 'dict': dict, 'tuple': tuple, 'range': range, 'True': True, 'False': False, 'None': None}})
+                    exec(command_clean, {"__builtins__": safe_builtins})
                     
                 except SyntaxError as e:
                     error_msg = str(e)
@@ -73,7 +116,7 @@ class CommandHandler:
                         print(self.lang.get('cmd_multiline_fallback'))
                         try:
                             command_escaped = command_clean.replace('\n', '\\n')
-                            exec(command_escaped, {"__builtins__": {'print': print}})
+                            exec(command_escaped, {"__builtins__": safe_builtins})
                         except Exception as e_escaped:
                             print(self.lang.get('cmd_error_fallback', e=e_escaped))
                     else:
@@ -83,3 +126,4 @@ class CommandHandler:
             return
 
         print(self.lang.get('cmd_not_found', package_name=package_name))
+
