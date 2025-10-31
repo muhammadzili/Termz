@@ -1,8 +1,8 @@
 # Termz 🚀
 ## 🌐 Read README in different languages
-1. [English](https://github.com/muhammadzili/blob/main/readme/english.md)
-2. [Russia](https://github.com/muhammadzili/blob/main/readme/russia.md)
-3. [Brazil](https://github.com/muhammadzili/blob/main/readme/brazil.md)
+1. [English](hhttps://github.com/muhammadzili/Termz/blob/main/readme/english.md)
+2. [Russia](hhttps://github.com/muhammadzili/Termz/blob/main/readme/russia.md)
+3. [Brazil](https://github.com/muhammadzili/Termz/blob/main/readme/brazil.md)
 
 <pre>
 ████████╗███████╗██████╗ ███╗   ███╗███████╗
