@@ -27,7 +27,6 @@ class PackageManager:
                 json.dump({}, f)
 
     def _load_config(self):
-        """Memuat file config.json atau membuatnya jika tidak ada."""
         try:
             if not os.path.exists(self.config_file):
                 print(self.lang.get('pkg_creating_default_config'))
@@ -44,7 +43,6 @@ class PackageManager:
         self.api_url = self.config.get("repo_url", DEFAULT_API_URL)
 
     def _save_config(self):
-        """Menyimpan data config saat ini ke config.json."""
         try:
             with open(self.config_file, "w") as f:
                 json.dump(self.config, f, indent=4)
@@ -52,7 +50,6 @@ class PackageManager:
             print(self.lang.get('pkg_config_save_error', e=e))
 
     def set_repo(self, url=None):
-        """Mengatur URL repository baru atau mereset ke default."""
         if url is None:
             self.config["repo_url"] = DEFAULT_API_URL
             print(self.lang.get('pkg_repo_reset', url=DEFAULT_API_URL))
@@ -146,11 +143,6 @@ class PackageManager:
                 return False
 
     def _parse_commands_from_data(self, data):
-        """
-        FIX: Fungsi ini 'menormalkan' data command.
-        Dia akan cari '**default**' atau 'default' dan mengubahnya
-        menjadi '__default__' secara otomatis.
-        """
         if "command" in data:
             return {"__default__": data["command"]}
         
@@ -169,7 +161,6 @@ class PackageManager:
         return {} 
 
     def _get_package_data_from_api(self, api_url):
-        """Mengambil dan mem-parse data paket dari API GitHub ATAU Simple Mirror."""
         try:
             res = requests.get(api_url, headers=self.headers, timeout=10)
             if res.status_code != 200:
@@ -205,14 +196,20 @@ class PackageManager:
 
     def install(self, name):
         repo_cache = self.load_repo_cache()
-        api_url = repo_cache.get(name)
+        pkg_file_or_url = repo_cache.get(name)
 
-        if not api_url:
+        if not pkg_file_or_url:
             print(self.lang.get('pkg_not_in_cache', name=name))
             return self.load() 
 
+        full_pkg_url = ""
+        if "api.github.com" in self.api_url:
+            full_pkg_url = pkg_file_or_url
+        else:
+            full_pkg_url = self.api_url + pkg_file_or_url
+
         print(self.lang.get('pkg_getting_info', name=name))
-        data = self._get_package_data_from_api(api_url) 
+        data = self._get_package_data_from_api(full_pkg_url) 
         if not data:
             return self.load() 
 
@@ -302,15 +299,21 @@ class PackageManager:
 
         print(self.lang.get('pkg_upgrade_check_installed'))
         for name, info in installed.items():
-            api_url = repo_cache.get(name)
+            pkg_file_or_url = repo_cache.get(name)
             current_ver = info.get("version", "0.0")
 
-            if not api_url:
+            if not pkg_file_or_url:
                 print(self.lang.get('pkg_upgrade_not_in_repo', name=name))
                 continue
 
             try:
-                data = self._get_package_data_from_api(api_url) 
+                full_pkg_url = ""
+                if "api.github.com" in self.api_url:
+                    full_pkg_url = pkg_file_or_url
+                else:
+                    full_pkg_url = self.api_url + pkg_file_or_url
+
+                data = self._get_package_data_from_api(full_pkg_url) 
                 if not data:
                     print(self.lang.get('pkg_upgrade_error_process', name=name))
                     continue
@@ -341,7 +344,6 @@ class PackageManager:
         print(self.lang.get('pkg_upgrade_summary', upgraded_count=upgraded_count, uptodate_count=uptodate_count))
 
     def search(self, keyword):
-        """Mencari paket di repo cache."""
         repo_cache = self.load_repo_cache()
         if not repo_cache:
             print(self.lang.get('pkg_search_empty_cache'))
@@ -356,3 +358,4 @@ class PackageManager:
         
         if found == 0:
             print(self.lang.get('pkg_search_not_found'))
+
