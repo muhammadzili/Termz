@@ -1,4 +1,5 @@
 import subprocess
+from core import ui
 
 class CommandHandler:
     def __init__(self, package_manager, initial_cache, lang):
@@ -11,7 +12,7 @@ class CommandHandler:
 
     def run_command(self, command_string):
         if not command_string:
-            print(self.lang.get('cmd_usage'))
+            ui.print_warning(self.lang.get('cmd_usage'))
             return
 
         parts = command_string.split()
@@ -21,7 +22,7 @@ class CommandHandler:
         installed = self.installed_cache 
 
         if installed is None:
-            print(self.lang.get('cmd_cache_empty'))
+            ui.print_warning(self.lang.get('cmd_cache_empty'))
             installed = self.package_manager.load()
             self.installed_cache = installed
 
@@ -38,28 +39,28 @@ class CommandHandler:
                 if "__default__" in commands_dict:
                     command_to_run = commands_dict["__default__"]
                 elif "default" in commands_dict:
-                    print(self.lang.get('pkg_command_parse_info_2'))
+                    ui.print_info(self.lang.get('pkg_command_parse_info_2'))
                     command_to_run = commands_dict["default"]
                 else:
-                    print(self.lang.get('cmd_no_default', package_name=package_name))
+                    ui.print_error(self.lang.get('cmd_no_default', package_name=package_name))
                     return
             
             elif "__default__" in commands_dict:
-                print(self.lang.get('cmd_subcommand_not_found_default', sub_command=sub_command))
+                ui.print_warning(self.lang.get('cmd_subcommand_not_found_default', sub_command=sub_command))
                 command_to_run = commands_dict["__default__"]
                 
             elif "default" in commands_dict:
-                print(self.lang.get('cmd_subcommand_not_found_default', sub_command=sub_command))
-                print(self.lang.get('pkg_command_parse_info_2'))
+                ui.print_warning(self.lang.get('cmd_subcommand_not_found_default', sub_command=sub_command))
+                ui.print_info(self.lang.get('pkg_command_parse_info_2'))
                 command_to_run = commands_dict["default"]
                 
             else:
-                print(self.lang.get('cmd_subcommand_not_found_no_default', package_name=package_name, sub_command=sub_command))
+                ui.print_error(self.lang.get('cmd_subcommand_not_found_no_default', package_name=package_name, sub_command=sub_command))
                 return
 
             if command_to_run:
                 display_subcommand = sub_command if sub_command != "__default__" else "default"
-                print(self.lang.get('cmd_running', package_name=package_name, display_subcommand=display_subcommand))
+                ui.print_info(self.lang.get('cmd_running', package_name=package_name, display_subcommand=display_subcommand))
                 
                 command_clean = command_to_run.replace('\u00A0', ' ')
 
@@ -113,17 +114,16 @@ class CommandHandler:
                 except SyntaxError as e:
                     error_msg = str(e)
                     if "EOL while scanning string literal" in error_msg or "unterminated string literal" in error_msg:
-                        print(self.lang.get('cmd_multiline_fallback'))
+                        ui.print_info(self.lang.get('cmd_multiline_fallback'))
                         try:
                             command_escaped = command_clean.replace('\n', '\\n')
                             exec(command_escaped, {"__builtins__": safe_builtins})
                         except Exception as e_escaped:
-                            print(self.lang.get('cmd_error_fallback', e=e_escaped))
+                            ui.print_error(self.lang.get('cmd_error_fallback', e=e_escaped))
                     else:
-                        print(self.lang.get('cmd_error_syntax', e=e))
+                        ui.print_error(self.lang.get('cmd_error_syntax', e=e))
                 except Exception as e:
-                    print(self.lang.get('cmd_error_generic', e=e))
+                    ui.print_error(self.lang.get('cmd_error_generic', e=e))
             return
 
-        print(self.lang.get('cmd_not_found', package_name=package_name))
-
+        ui.print_error(self.lang.get('cmd_not_found', package_name=package_name))

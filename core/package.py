@@ -4,7 +4,7 @@ import re
 import requests
 import time
 import base64
-from core.ui import progress_bar
+from core import ui
 
 DEFAULT_API_URL = "https://api.github.com/repos/muhammadzili/termz-package/contents/packages"
 
@@ -29,14 +29,14 @@ class PackageManager:
     def _load_config(self):
         try:
             if not os.path.exists(self.config_file):
-                print(self.lang.get('pkg_creating_default_config'))
+                ui.print_info(self.lang.get('pkg_creating_default_config'))
                 self.config = {"repo_url": DEFAULT_API_URL}
                 self._save_config()
             else:
                 with open(self.config_file, "r") as f:
                     self.config = json.load(f)
         except json.JSONDecodeError:
-            print(self.lang.get('pkg_config_corrupt'))
+            ui.print_warning(self.lang.get('pkg_config_corrupt'))
             self.config = {"repo_url": DEFAULT_API_URL}
             self._save_config()
         
@@ -47,28 +47,28 @@ class PackageManager:
             with open(self.config_file, "w") as f:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
-            print(self.lang.get('pkg_config_save_error', e=e))
+            ui.print_error(self.lang.get('pkg_config_save_error', e=e))
 
     def set_repo(self, url=None):
         if url is None:
             self.config["repo_url"] = DEFAULT_API_URL
-            print(self.lang.get('pkg_repo_reset', url=DEFAULT_API_URL))
+            ui.print_success(self.lang.get('pkg_repo_reset', url=DEFAULT_API_URL))
         else:
             if not url.endswith('/'):
                 url += '/'
             self.config["repo_url"] = url
-            print(self.lang.get('pkg_repo_changed', url=url))
+            ui.print_success(self.lang.get('pkg_repo_changed', url=url))
         
         self._save_config()
         self._load_config() 
-        print(self.lang.get('pkg_run_update'))
+        ui.print_info(self.lang.get('pkg_run_update'))
 
     def load(self):
         try:
             with open(self.file, "r") as f:
                 return json.load(f)
         except json.JSONDecodeError:
-            print(self.lang.get('pkg_installed_corrupt'))
+            ui.print_warning(self.lang.get('pkg_installed_corrupt'))
             return {} 
 
     def save(self, data):
@@ -80,7 +80,7 @@ class PackageManager:
             with open(self.repo_cache, "r") as f:
                 return json.load(f)
         except json.JSONDecodeError:
-            print(self.lang.get('pkg_cache_corrupt'))
+            ui.print_warning(self.lang.get('pkg_cache_corrupt'))
             return {}
 
     def save_repo_cache(self, data):
@@ -88,10 +88,10 @@ class PackageManager:
             json.dump(data, f, indent=4)
 
     def update_repo(self):
-        print(self.lang.get('pkg_updating', url=self.api_url))
+        ui.print_info(self.lang.get('pkg_updating', url=self.api_url))
         try:
             if "api.github.com" in self.api_url:
-                print(self.lang.get('pkg_mode_github'))
+                ui.print_info(self.lang.get('pkg_mode_github'))
                 res = requests.get(self.api_url, headers=self.headers, timeout=10)
                 if res.status_code != 200:
                     raise Exception(self.lang.get('pkg_github_api_error', code=res.status_code))
@@ -102,10 +102,10 @@ class PackageManager:
                         repo_data[pkg["name"].replace(".json", "")] = pkg["url"]
             
             else:
-                print(self.lang.get('pkg_mode_mirror'))
+                ui.print_info(self.lang.get('pkg_mode_mirror'))
                 index_url = self.api_url + "index.json"
                 
-                print(self.lang.get('pkg_fetching_index', url=index_url))
+                ui.print_info(self.lang.get('pkg_fetching_index', url=index_url))
                 res = requests.get(index_url, headers=self.headers, timeout=10)
                 if res.status_code != 200:
                     raise Exception(self.lang.get('pkg_mirror_api_error', code=res.status_code))
@@ -115,14 +115,14 @@ class PackageManager:
                     raise Exception(self.lang.get('pkg_mirror_not_dict'))
             
             self.save_repo_cache(repo_data)
-            print(self.lang.get('pkg_update_success', count=len(repo_data)))
+            ui.print_success(self.lang.get('pkg_update_success', count=len(repo_data)))
             return True
 
         except Exception as e:
-            print(self.lang.get('pkg_update_error', url=self.api_url, e=e))
+            ui.print_error(self.lang.get('pkg_update_error', url=self.api_url, e=e))
             
             if self.api_url != DEFAULT_API_URL:
-                print(self.lang.get('pkg_fallback_default'))
+                ui.print_warning(self.lang.get('pkg_fallback_default'))
                 try:
                     res_default = requests.get(DEFAULT_API_URL, headers=self.headers, timeout=10)
                     if res_default.status_code == 200:
@@ -131,21 +131,19 @@ class PackageManager:
                             if pkg["name"].endswith(".json"):
                                 repo_data[pkg["name"].replace(".json", "")] = pkg["url"] 
                         self.save_repo_cache(repo_data)
-                        print(self.lang.get('pkg_fallback_success', count=len(repo_data)))
+                        ui.print_success(self.lang.get('pkg_fallback_success', count=len(repo_data)))
                         return True
                     else:
-                        print(self.lang.get('pkg_fallback_fail', code=res_default.status_code))
+                        ui.print_error(self.lang.get('pkg_fallback_fail', code=res_default.status_code))
                         return False
                 except Exception as e_default:
-                    print(self.lang.get('pkg_fallback_fatal', e=e_default))
+                    ui.print_error(self.lang.get('pkg_fallback_fatal', e=e_default))
                     return False
             else:
                 return False
 
     def _parse_commands_from_data(self, data):
         def fix_string(cmd_str):
-            # Mengganti literal '\\n' (dari JSON) menjadi newline character '\n'
-            # yang bisa dieksekusi oleh exec()
             if isinstance(cmd_str, str):
                 return cmd_str.replace('\\n', '\n')
             return cmd_str
@@ -157,13 +155,12 @@ class PackageManager:
             cmds = data["commands"].copy() 
             
             if "**default**" in cmds:
-                print(self.lang.get('pkg_command_parse_info_1'))
+                ui.print_info(self.lang.get('pkg_command_parse_info_1'))
                 cmds["__default__"] = fix_string(cmds.pop("**default**"))
             elif "default" in cmds and "__default__" not in cmds:
-                print(self.lang.get('pkg_command_parse_info_2'))
+                ui.print_info(self.lang.get('pkg_command_parse_info_2'))
                 cmds["__default__"] = fix_string(cmds.pop("default"))
 
-            # Fix juga semua command lainnya, buat jaga-jaga
             for key in cmds:
                 cmds[key] = fix_string(cmds[key])
                 
@@ -175,43 +172,44 @@ class PackageManager:
         try:
             res = requests.get(api_url, headers=self.headers, timeout=10)
             if res.status_code != 200:
-                print(self.lang.get('pkg_fetch_http_error', code=res.status_code))
+                ui.print_error(self.lang.get('pkg_fetch_http_error', code=res.status_code))
                 return None
 
             if "api.github.com" in api_url:
-                print(self.lang.get('pkg_fetch_mode_github'))
+                ui.print_info(self.lang.get('pkg_fetch_mode_github'))
                 res_json = res.json()
                 if res_json.get("encoding") != "base64":
-                    print(self.lang.get('pkg_fetch_not_base64'))
+                    ui.print_error(self.lang.get('pkg_fetch_not_base64'))
                     return None
                 
                 content_base64 = res_json.get("content", "")
                 decoded_content = base64.b64decode(content_base64).decode("utf-8")
                 
-                print(self.lang.get('pkg_fetch_applying_fix'))
+                ui.print_info(self.lang.get('pkg_fetch_applying_fix'))
                 safe_text = re.sub(r'\\(?![\"\\/bfnrtu])', r'\\\\', decoded_content)
             
             else:
-                print(self.lang.get('pkg_fetch_mode_mirror'))
+                ui.print_info(self.lang.get('pkg_fetch_mode_mirror'))
                 safe_text = res.text
             
             data = json.loads(safe_text)
             return data
 
         except json.JSONDecodeError as e: 
-            print(self.lang.get('pkg_fetch_parse_error', e=e))
+            ui.print_error(self.lang.get('pkg_fetch_parse_error', e=e))
             return None
         except Exception as e:
-            print(self.lang.get('pkg_fetch_process_error', e=e))
+            ui.print_error(self.lang.get('pkg_fetch_process_error', e=e))
             return None
 
-    def install(self, name):
+    def install(self, name, _is_dependency=False):
+        installed = self.load()
         repo_cache = self.load_repo_cache()
         pkg_file_or_url = repo_cache.get(name)
 
         if not pkg_file_or_url:
-            print(self.lang.get('pkg_not_in_cache', name=name))
-            return self.load() 
+            ui.print_warning(self.lang.get('pkg_not_in_cache', name=name))
+            return installed 
 
         full_pkg_url = ""
         if "api.github.com" in self.api_url:
@@ -219,30 +217,45 @@ class PackageManager:
         else:
             full_pkg_url = self.api_url + pkg_file_or_url
 
-        print(self.lang.get('pkg_getting_info', name=name))
+        if not _is_dependency:
+            ui.print_info(self.lang.get('pkg_getting_info', name=name))
+            
         data = self._get_package_data_from_api(full_pkg_url) 
         if not data:
-            return self.load() 
+            return installed 
 
-        print(f"\n{self.lang.get('pkg_detail_title')}")
-        print(self.lang.get('pkg_detail_name', name=data.get('name', name)))
-        print(self.lang.get('pkg_detail_version', version=data.get('version', 'N/A')))
-        print(self.lang.get('pkg_detail_author', author=data.get('author', 'Unknown')))
-        print(self.lang.get('pkg_detail_desc', desc=data.get('desc', 'N/A')))
-        print(self.lang.get('pkg_detail_footer'))
+        dependencies = data.get("dependencies", [])
+        if dependencies:
+            ui.print_info(self.lang.get('pkg_checking_deps'))
+            for dep_name in dependencies:
+                if dep_name not in installed:
+                    ui.print_info(self.lang.get('pkg_installing_dep', name=dep_name))
+                    installed = self.install(dep_name, _is_dependency=True)
+                    if dep_name not in installed:
+                        ui.print_error(self.lang.get('pkg_dep_failed', name=dep_name))
+                        return self.load()
         
-        try:
-            confirm = input(self.lang.get('pkg_confirm_install')).strip().lower()
-        except EOFError:
-            confirm = "n" 
-            print()
+        if not _is_dependency:
+            print(f"\n{self.lang.get('pkg_detail_title')}")
+            print(self.lang.get('pkg_detail_name', name=data.get('name', name)))
+            print(self.lang.get('pkg_detail_version', version=data.get('version', 'N/A')))
+            print(self.lang.get('pkg_detail_author', author=data.get('author', 'Unknown')))
+            print(self.lang.get('pkg_detail_desc', desc=data.get('desc', 'N/A')))
+            print(self.lang.get('pkg_detail_footer'))
+            
+            try:
+                confirm = input(self.lang.get('pkg_confirm_install')).strip().lower()
+            except EOFError:
+                confirm = "n" 
+                print()
 
-        if confirm not in ["y", "yes", ""]:
-            print(self.lang.get('pkg_install_cancelled'))
-            return self.load() 
+            if confirm not in ["y", "yes", ""]:
+                ui.print_info(self.lang.get('pkg_install_cancelled'))
+                return installed
+        else:
+            ui.print_info(self.lang.get('pkg_installing_dep_confirmed', name=name))
 
-        progress_bar(self.lang.get('pkg_installing', name=name), 0.5) 
-        installed = self.load()
+        ui.progress_bar(self.lang.get('pkg_installing', name=name), 0.5) 
 
         commands = self._parse_commands_from_data(data)
 
@@ -255,13 +268,13 @@ class PackageManager:
 
         self.save(installed)
         version_str = data.get('version', '1.0')
-        print(self.lang.get('pkg_install_success', name=name, version=version_str))
+        ui.print_success(self.lang.get('pkg_install_success', name=name, version=version_str))
         return installed 
 
     def remove(self, name):
         installed = self.load()
         if name not in installed:
-            print(self.lang.get('pkg_not_installed', name=name))
+            ui.print_error(self.lang.get('pkg_not_installed', name=name))
             return installed 
 
         try:
@@ -272,18 +285,18 @@ class PackageManager:
             print()
 
         if confirm not in ["y", "yes", ""]:
-            print(self.lang.get('pkg_remove_cancelled'))
+            ui.print_info(self.lang.get('pkg_remove_cancelled'))
             return installed 
             
         del installed[name]
         self.save(installed)
-        print(self.lang.get('pkg_remove_success', name=name))
+        ui.print_success(self.lang.get('pkg_remove_success', name=name))
         return installed 
 
     def list_installed(self):
         installed = self.load()
         if not installed:
-            print(self.lang.get('pkg_list_empty'))
+            ui.print_info(self.lang.get('pkg_list_empty'))
             return
 
         print(f"\n{self.lang.get('pkg_list_title')}")
@@ -292,17 +305,17 @@ class PackageManager:
             print(self.lang.get('pkg_list_item', name=name, version=info['version'], commands=commands))
 
     def upgrade_all(self):
-        print(self.lang.get('pkg_upgrade_checking'))
+        ui.print_info(self.lang.get('pkg_upgrade_checking'))
         
         if not self.update_repo():
-            print(self.lang.get('pkg_upgrade_fail_update'))
+            ui.print_warning(self.lang.get('pkg_upgrade_fail_update'))
             return
 
         installed = self.load()
         repo_cache = self.load_repo_cache()
         
         if not installed:
-            print(self.lang.get('pkg_upgrade_empty'))
+            ui.print_info(self.lang.get('pkg_upgrade_empty'))
             return
 
         upgraded_count = 0
@@ -314,7 +327,7 @@ class PackageManager:
             current_ver = info.get("version", "0.0")
 
             if not pkg_file_or_url:
-                print(self.lang.get('pkg_upgrade_not_in_repo', name=name))
+                ui.print_warning(self.lang.get('pkg_upgrade_not_in_repo', name=name))
                 continue
 
             try:
@@ -326,16 +339,28 @@ class PackageManager:
 
                 data = self._get_package_data_from_api(full_pkg_url) 
                 if not data:
-                    print(self.lang.get('pkg_upgrade_error_process', name=name))
+                    ui.print_warning(self.lang.get('pkg_upgrade_error_process', name=name))
                     continue
 
                 new_ver = data.get("version")
                 if not new_ver:
-                    print(self.lang.get('pkg_upgrade_no_version', name=name))
+                    ui.print_warning(self.lang.get('pkg_upgrade_no_version', name=name))
                     continue
                 
                 if new_ver != current_ver:
-                    print(self.lang.get('pkg_upgrading_from', name=name, current_ver=current_ver, new_ver=new_ver))
+                    ui.print_info(self.lang.get('pkg_upgrading_from', name=name, current_ver=current_ver, new_ver=new_ver))
+                    
+                    dependencies = data.get("dependencies", [])
+                    if dependencies:
+                        ui.print_info(self.lang.get('pkg_checking_deps'))
+                        for dep_name in dependencies:
+                            if dep_name not in installed:
+                                ui.print_info(self.lang.get('pkg_installing_dep', name=dep_name))
+                                installed = self.install(dep_name, _is_dependency=True)
+                                if dep_name not in installed:
+                                    ui.print_error(self.lang.get('pkg_dep_failed', name=dep_name))
+                                    raise Exception(f"Failed to install dependency {dep_name}")
+                    
                     commands = self._parse_commands_from_data(data)
                     
                     installed[name]["version"] = new_ver
@@ -344,23 +369,23 @@ class PackageManager:
                     installed[name]["author"] = data.get("author", "Unknown")
                     upgraded_count += 1
                 else:
-                    print(self.lang.get('pkg_up_to_date', name=name, current_ver=current_ver, new_ver=new_ver))
+                    ui.print_success(self.lang.get('pkg_up_to_date', name=name, current_ver=current_ver, new_ver=new_ver))
                     uptodate_count += 1
             
             except Exception as e:
-                 print(self.lang.get('pkg_upgrade_error_skip', name=name, e=e))
+                 ui.print_error(self.lang.get('pkg_upgrade_error_skip', name=name, e=e))
 
         self.save(installed)
         print(f"\n{self.lang.get('pkg_upgrade_complete')}")
-        print(self.lang.get('pkg_upgrade_summary', upgraded_count=upgraded_count, uptodate_count=uptodate_count))
+        ui.print_info(self.lang.get('pkg_upgrade_summary', upgraded_count=upgraded_count, uptodate_count=uptodate_count))
 
     def search(self, keyword):
         repo_cache = self.load_repo_cache()
         if not repo_cache:
-            print(self.lang.get('pkg_search_empty_cache'))
+            ui.print_warning(self.lang.get('pkg_search_empty_cache'))
             return
 
-        print(self.lang.get('pkg_searching', keyword=keyword))
+        ui.print_info(self.lang.get('pkg_searching', keyword=keyword))
         found = 0
         for name in repo_cache.keys():
             if keyword.lower() in name.lower():
@@ -368,5 +393,5 @@ class PackageManager:
                 found += 1
         
         if found == 0:
-            print(self.lang.get('pkg_search_not_found'))
+            ui.print_info(self.lang.get('pkg_search_not_found'))
 
